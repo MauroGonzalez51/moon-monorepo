@@ -9,6 +9,6 @@ This script will automatically download the template, prompt you for the organiz
 Run the following command:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/MauroGonzalez51/moon-monorepo/main/scripts/init-repository.py | python3
+python3 <(curl -sSL https://raw.githubusercontent.com/MauroGonzalez51/moon-monorepo/main/scripts/init-repository.py)
 ```
 
