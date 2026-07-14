@@ -1,0 +1,8 @@
+{
+    "name": "@_ORG/tools-tsconfig",
+    "version": "1.0.0",
+    "description": "Shared Typescript config",
+    "exports": {
+        "./tsconfig.json": "./tsconfig.base.json"
+    }
+}

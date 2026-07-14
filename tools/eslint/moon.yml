@@ -1,0 +1,28 @@
+project:
+    name: eslint
+    description: shared eslint configuration
+
+layer: tool
+
+language: typescript
+
+tasks:
+    pnpm:
+        command: pnpm
+        args:
+            - --filter
+            - "@_ORG/tools-eslint"
+        toolchains: node
+        options:
+            cache: false
+            interactive: true
+            runFromWorkspaceRoot: true
+
+    build:
+        command: pnpm
+        args:
+            - exec
+            - tsup
+        toolchains: node
+        options:
+            cache: false

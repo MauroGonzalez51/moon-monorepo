@@ -1,0 +1,25 @@
+{
+    "folders": [
+        {
+            "name": "ROOT",
+            "path": "../",
+        },
+        {
+            "name": "[ TOOLS ] Eslint",
+            "path": "../tools/eslint",
+        },
+        {
+            "name": "[ TOOLS ] TSConfig",
+            "path": "../tools/tsconfig",
+        },
+    ],
+    "settings": {
+        "files.exclude": {
+            "**/.DS_Store": true,
+            "**/.git": true,
+            "**/.hg": true,
+            "**/.svn": true,
+            "**/Thumbs.db": true,
+        },
+    },
+}
