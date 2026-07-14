@@ -1,4 +1,13 @@
 {
+    "[python]": {
+        "editor.codeActionsOnSave": {
+            "source.fixAll": "explicit",
+            "source.organizeImports": "explicit",
+            "source.sort.json": "explicit"
+        },
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "editor.formatOnSave": true
+    },
     "editor.codeActionsOnSave": {
         "source.fixAll.eslint": "explicit",
         "source.organizeImports": "explicit",
@@ -79,5 +88,12 @@
         "scss",
         "pcss",
         "postcss"
+    ],
+    "python-envs.pythonProjects": [
+        {
+            "path": ".",
+            "envManager": "ms-python.python:system",
+            "packageManager": "ms-python.python:pip"
+        }
     ]
 }
