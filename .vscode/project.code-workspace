@@ -5,11 +5,15 @@
             "path": "../",
         },
         {
-            "name": "[ TOOLS ] Eslint",
+            "name": "@ Moon Config",
+            "path": "../.moon",
+        },
+        {
+            "name": "@ Eslint",
             "path": "../tools/eslint",
         },
         {
-            "name": "[ TOOLS ] TSConfig",
+            "name": "@ TSConfig",
             "path": "../tools/tsconfig",
         },
     ],

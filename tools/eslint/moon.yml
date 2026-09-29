@@ -6,17 +6,33 @@ layer: tool
 
 language: typescript
 
+toolchains:
+    default: node
+
+workspace:
+    inheritedTasks:
+        include:
+            - pnpm
+            - lint
+
+fileGroups:
+    sources:
+        - src/**/*
+        - package.json
+        - tsup.config.ts
+        - tsconfig.json
+
 tasks:
     pnpm:
-        command: pnpm
         args:
             - --filter
             - "@_ORG/tools-eslint"
-        toolchains: node
-        options:
-            cache: false
-            interactive: true
-            runFromWorkspaceRoot: true
+
+    lint:
+        inputs:
+            - "@group(sources)"
+        outputs:
+            - "@group(sources)"
 
     build:
         command: pnpm
