@@ -1,3 +1,6 @@
 {
-    "name": "@_ORG/root"
+    "name": "@_ORG/root",
+    "devDependencies": {
+        "taze": "^21.2.0"
+    }
 }
