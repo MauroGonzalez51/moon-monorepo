@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from __future__ import annotations
 
 import enum
@@ -8,11 +9,12 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, List, cast
+from typing import Any, ClassVar, cast
 
 
-class Logger(object):
+class Logger:
     @staticmethod
     def setup() -> logging.Logger:
         logger = logging.getLogger(__name__)
@@ -31,8 +33,8 @@ class Logger(object):
         return logger
 
 
-class Dependencies(object):
-    REQUIRED_LIBS: List[str] = ["questionary", "rich"]
+class Dependencies:
+    REQUIRED_LIBS: ClassVar = ["questionary", "rich"]
     TEMP_DIR = "moon_moonrepo_setup_dependencies"
 
     class Status(enum.Enum):
@@ -45,13 +47,13 @@ class Dependencies(object):
 
     @staticmethod
     def bootstrap(*, logger: logging.Logger) -> Dependencies.Status:
-        missing_depencencies = [
+        missing_dependencies = [
             lib
             for lib in Dependencies.REQUIRED_LIBS
             if not Dependencies.is_available(lib)
         ]
 
-        if not missing_depencencies:
+        if not missing_dependencies:
             return Dependencies.Status.SATISFIED
 
         temp_dir = os.path.join(tempfile.gettempdir(), Dependencies.TEMP_DIR)
@@ -69,7 +71,7 @@ class Dependencies(object):
                     "--quiet",
                     "--no-warn-script-location",
                 ]
-                + missing_depencencies,
+                + missing_dependencies,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
@@ -78,12 +80,12 @@ class Dependencies(object):
 
             still_missing = [
                 lib
-                for lib in missing_depencencies
+                for lib in missing_dependencies
                 if not Dependencies.is_available(lib)
             ]
 
             if not still_missing:
-                logger.info("dependencies loaded succesfully")
+                logger.info("dependencies loaded successfully")
                 return Dependencies.Status.SATISFIED
 
             logger.error("failed to load some dependencies after install")
@@ -94,15 +96,15 @@ class Dependencies(object):
         return Dependencies.Status.MISSING
 
 
-class Setup(object):
+class Setup:
     def __init__(
         self, *, logger: logging.Logger, dependency_status: Dependencies.Status
     ) -> None:
         self.logger = logger
         self.dependency_status = dependency_status
         self.template_repository = "https://github.com/MauroGonzalez51/moon-monorepo"
-        self.placeholders = dict(ORGANIZATION="@_ORG")
-        self.ignore_directories = [".git", "node_modules", ".moon"]
+        self.placeholders = {"ORGANIZATION": "@_ORG"}
+        self.ignore_directories = [".git", "node_modules"]
         self.target_extensions = [".json", ".yml", ".yaml", ".md", ".ts", ".js"]
 
     def _separator(self, char: str = "-", width: int = 0) -> None:
@@ -127,26 +129,85 @@ class Setup(object):
                 pass
 
     def _clone_repository(self, path: Path) -> bool:
+        temp_dir = Path(tempfile.mkdtemp(prefix="moon_monorepo_template_"))
         try:
-            path.mkdir(parents=True, exist_ok=True)
-
-            if (path / ".git").exists():
-                self.logger.info(
-                    "existing git repository detected in destination. skipping ..."
-                )
-                return True
-
             self.logger.info(f"cloning template repository into {path}")
             subprocess.run(
-                ["git", "clone", self.template_repository, str(path)], check=True
+                ["git", "clone", self.template_repository, str(temp_dir)], check=True
             )
 
-            self._clean_git(directory=path)
+            self._clean_git(directory=temp_dir)
+
+            copied, skipped = self._merge_tree(source=temp_dir, destination=path)
+            self._report_merge(copied=copied, skipped=skipped)
 
             return True
         except subprocess.CalledProcessError as exception:
             self.logger.error(f"failed to clone repository: {exception}")
             return False
+        finally:
+            shutil.rmtree(temp_dir, onexc=self._handle_remove_readonly)
+
+    def _report_merge(self, *, copied: list[Path], skipped: list[Path]) -> None:
+        expected = len(copied) + len(skipped)
+        actual = len(copied)
+
+        if self.dependency_status == Dependencies.Status.SATISFIED:
+            from rich import print as rprint
+            from rich.table import Table
+
+            table = Table(title="Template Merge Report")
+            table.add_column("Metric", style="cyan")
+            table.add_column("Value", style="magenta", justify="right")
+            table.add_row("Expected files", str(expected))
+            table.add_row("Copied", str(actual))
+            table.add_row("Skipped (already exist)", str(len(skipped)))
+            rprint(table)
+
+            if skipped:
+                rprint("[yellow]Skipped files (kept existing):[/yellow]")
+                for relative in skipped:
+                    rprint(f"  [dim]-[/dim] {relative}")
+
+            return
+
+        self._separator()
+        sys.stdout.write(
+            f"expected: {expected}, copied: {actual}, skipped: {len(skipped)}\n"
+        )
+        if skipped:
+            sys.stdout.write("skipped files (kept existing):\n")
+            for relative in skipped:
+                sys.stdout.write(f"  - {relative}\n")
+        self._separator()
+
+    def _merge_tree(
+        self, *, source: Path, destination: Path
+    ) -> tuple[list[Path], list[Path]]:
+        copied: list[Path] = []
+        skipped: list[Path] = []
+
+        for item in source.rglob("*"):
+            relative = item.relative_to(source)
+
+            if any(ignored in relative.parts for ignored in self.ignore_directories):
+                continue
+
+            target = destination / relative
+
+            if item.is_dir():
+                target.mkdir(parents=True, exist_ok=True)
+                continue
+
+            if target.exists():
+                skipped.append(relative)
+                continue
+
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(item, target)
+            copied.append(relative)
+
+        return copied, skipped
 
     def _sanitize_scope(self, scope: str) -> str:
         return scope.replace("@", "").strip().lower().replace(" ", "-")
@@ -239,10 +300,7 @@ class Setup(object):
             )
 
         _input = input(f"{message} [y/N]")
-        if _input == "y":
-            return True
-
-        return False
+        return _input == "y"
 
     def _header(self) -> None:
         if self.dependency_status == Dependencies.Status.SATISFIED:
@@ -279,7 +337,7 @@ class Setup(object):
 
         scope_input = self._get_scope()
         if not scope_input:
-            self.logger.info("scoped cannot be empty. exiting")
+            self.logger.info("scope cannot be empty. exiting")
             return
 
         if len(scope_input.split(" ")) > 1:
@@ -287,13 +345,15 @@ class Setup(object):
             return
 
         if not self._clone_repository(path=repository_path):
-            self.logger.info("repository not clonned. exiting...")
+            self.logger.info("repository not cloned. exiting...")
             return
 
-        self._apply_replacement(
+        modified_files = self._apply_replacement(
             replacement_scope=self._sanitize_scope(scope=scope_input),
             repository_path=repository_path,
         )
+
+        self.logger.info(f"replaced organization placeholder in {modified_files} files")
 
 
 def main() -> None:
